@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+{% load static %}
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>智能输液监测系统</title>
+    <link rel="stylesheet" href="{% static 'css/infusion_system_large_screen_zy.css' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <div class="header">
+        花都区妇幼保健院住院智能输液报警系统
+    </div>
+
+    <div class="content">
+        <div class="card infusion-started" id="patient1">
+            <div class="liquid-overlay"></div>
+            <div class="card-content">
+                科室: <span class="department"></span><br>
+                住院号: <span class="patient-id"></span><br>
+                床号: <span class="bed-no"></span><br>
+                患者信息: <span class="patient-info"></span><br>
+                用法: <span class="usage"></span><br>
+                滴速: <span class="drop-rate"></span><br>
+                开始时间: <span class="start-time"></span>
+                <p class="liquid-info">估计液体余量: <span class="liquid-amount"></span></p>
+            </div>
+            <div class="popup">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>药品名称</th>
+                            <th>规格</th>
+                            <th>数量</th>
+                            <th>用量</th>
+                            <th>单位</th>
+                            <th>次数</th>
+                            <th>用法</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 药品信息将在这里动态插入 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card add-card" onclick="addCard()">+</div>
+    </div>
+
+    <div id="patient1Modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 style="text-align: center; margin: 10px;">绑定患者与设备</h3>
+            <div class="form-row">
+                <label for="deviceNumber">设备号：</label>
+                <input type="text" class="deviceNumber">
+                <button class="device-scan-button">扫描</button>
+            </div>
+            <div class="form-row">
+                <label for="lockSwitch">锁开关：</label>
+                <input type="text" class="lockSwitch" readonly placeholder="设备号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="batteryLevel">电量：</label>
+                <input type="text" class="batteryLevel" readonly placeholder="设备号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="patientID">住院号：</label>
+                <input type="text" class="patientID">
+                <button class="patient-id-scan-button">扫描</button>
+            </div>
+            <div class="form-row">
+                <label for="medicineGroup">药品组号：</label>
+                <div class="medicine-group-container">
+                    <select class="medicineGroup">
+                        <option value="">住院号扫描后请选择药品组号</option>
+                    </select>
+                    <div class="medicine-info-tooltip"></div>
+                </div>
+            </div>
+            <div class="form-row">
+                <label for="name">姓名：</label>
+                <input type="text" class="name" readonly placeholder="住院号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="gender">性别：</label>
+                <input type="text" class="gender" readonly placeholder="住院号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="age">年龄：</label>
+                <input type="text" class="age" readonly placeholder="住院号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="department">科室：</label>
+                <input type="text" class="department" readonly placeholder="住院号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="bed-no">床号：</label>
+                <input type="text" class="bed-no" readonly placeholder="住院号扫描后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="temperature">体温：</label>
+                <input type="text" class="temperature" placeholder="请填写">
+            </div>
+            <div class="form-row">
+                <label for="dropRate">滴速：</label>
+                <input type="text" class="dropRate" placeholder="请填写，__滴/分钟" required value="60">
+            </div>
+            <div class="form-row">
+                <label for="usage">用法：</label>
+                <input type="text" class="usage" placeholder="选中药品组号后自动生成">
+            </div>
+            <div class="form-row">
+                <label for="startTime">开始时间：</label>
+                <input type="text" class="startTime" placeholder="设备号扫描后自动生成">
+            </div>
+            <div style="text-align: center;">
+                <button class="button-start-infusion startInfusionButton">开始输液</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <img src="{% static 'images/logo.png' %}" alt="Logo" class="logo">
+    </div>
+
+    <script src="{% static 'js/infusion_system_large_screen_zy.js' %}"></script>
+</body>
+
+</html>

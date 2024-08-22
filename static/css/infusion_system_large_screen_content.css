@@ -1,0 +1,254 @@
+.content {
+    display: flex;
+    /* align-items: center; */
+    padding: 2rem; /* 使用rem单位 */
+    margin: 5% 15%;
+    flex-wrap: wrap;
+    gap: 15px;
+    min-height: 50vh;
+    box-shadow: 0 0 40px rgba(0,0,0,0.1);
+}
+
+.card {
+    background-color: #F0F8FF; 
+    color: #333333; 
+    padding: 2%;
+    font-size: 1.1rem;
+    /* background-color: white; */
+    /* color: black;  */
+    border-radius: 30px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    position: relative;
+    width: 24%;
+    height: 55%;
+    /* overflow: hidden; */
+}
+
+.card:hover {
+    transform: scale(1.10);
+}
+
+.add-card {
+    font-size: 9rem;
+    color: #4A90E2; /* 与头部颜色一致 */
+    align-items: center;
+    height: 100%;
+}
+
+@keyframes cardAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.5) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.new-card {
+    animation: cardAppear 0.5s ease-out forwards;
+}
+
+@media (max-width: 768px) {
+    .header {
+        font-size: 2rem;
+        padding: 1rem;
+    }
+
+    .card {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    .add-card {
+        font-size: 1.5rem;
+    }
+
+    .footer {
+        padding: 1rem;
+    }
+
+    .logo {
+        width: 95%; /* 在小屏幕上增加宽度占比 */
+        height: 50vh; /* 在小屏幕上减小高度 */
+    }
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: #F9FBFF; /* 非常浅的蓝色 */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 3em;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.form-row {
+    margin-bottom: 10px;
+}
+
+.form-row label {
+    display: inline-block;
+    width: 120px;
+}
+
+.form-row input[type="text"] {
+    width: 200px;
+}
+
+.form-row button {
+    margin-left: 5px;
+}
+
+.popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#patient1 {
+    z-index: 1000;
+}
+
+.popup.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #E6F3FF; /* 与body背景色一致 */
+    white-space: nowrap;
+
+}
+
+.liquid-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0%;
+    background-color: rgba(255, 0, 0, 0.3);
+    transition: height 0.5s ease;
+    border-radius: 30px;
+}
+
+.card-content {
+    position: relative;
+    z-index: 1;
+}
+
+.completion-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #4A90E2;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    border-radius: 30px;
+}
+
+.button-start-infusion {
+    font-size: 18px;
+    display: inline-block;
+    outline: 0;
+    border: 0;
+    cursor: pointer;
+    will-change: box-shadow,transform;
+    background: radial-gradient( 100% 100% at 100% 0%, #89E5FF 0%, #5468FF 100% );
+    box-shadow: 0px 0.01em 0.01em rgb(45 35 66 / 40%), 0px 0.3em 0.7em -0.01em rgb(45 35 66 / 30%), inset 0px -0.01em 0px rgb(58 65 111 / 50%);
+    padding: 0 2em;
+    border-radius: 0.3em;
+    color: #fff;
+    height: 2.6em;
+    text-shadow: 0 1px 0 rgb(0 0 0 / 40%);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+  
+.button-start-infusion:hover {
+    box-shadow: 0px 0.1em 0.2em rgb(45 35 66 / 40%), 0px 0.4em 0.7em -0.1em rgb(45 35 66 / 30%), inset 0px -0.1em 0px #3c4fe0;
+    transform: translateY(-0.1em);
+}
+  
+.button-start-infusion:active {
+    box-shadow: inset 0px 0.1em 0.6em #3c4fe0;
+    transform: translateY(0em);
+}
+
+.medicine-group-container {
+    position: relative;
+    display: inline-block;
+}
+
+.medicine-info-tooltip {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    display: none;
+    z-index: 1000;
+    white-space: nowrap;
+    max-width: 300px;
+}
