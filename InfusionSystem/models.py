@@ -10,7 +10,7 @@ class UserInfo(models.Model):
         return self.name
 
     class Meta:
-        db_table = 'TestDjango'
+        db_table = "TestDjango"
 
 
 class Device(models.Model):
@@ -23,9 +23,9 @@ class Device(models.Model):
 
     def __str__(self):
         return self.mac
-    
+
     class Meta:
-        db_table = 'device'
+        db_table = "device"
 
 
 class SyRecord(models.Model):
@@ -61,10 +61,11 @@ class SyRecord(models.Model):
         return self.p_id
 
     class Meta:
-        db_table = 'sy_record'
+        db_table = "sy_record"
 
 
 class ZyRecord(models.Model):
+
     # 住院输液记录
     inpatient_no = models.CharField(max_length=12, primary_key=True)
     XM = models.CharField(max_length=32)
@@ -95,4 +96,25 @@ class ZyRecord(models.Model):
         return self.inpatient_no
 
     class Meta:
-        db_table = 'zy_rec'
+        db_table = "zy_rec"
+
+
+class PatientInfusionInformation(models.Model):
+    # 患者输液信息表
+
+    name = models.CharField(max_length=100)
+    gender = models.CharField(max_length=100)
+    department = models.CharField(max_length=100)
+    bedNum = models.CharField(max_length=100)
+    usage = models.CharField(max_length=100)
+    startTime = models.TimeField()
+    residualLiquid = models.CharField(max_length=100)
+    cardId = models.CharField(max_length=100, primary_key=True)
+    liquidHeight = models.CharField(max_length=100)
+    switchStatu = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.inpatient_no
+
+    class Meta:
+        db_table = "patientInfusionInformation"

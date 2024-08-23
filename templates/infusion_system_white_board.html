@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+{% load static %}
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>患者输液信息展示</title>
+    <link rel="stylesheet" href="{% static 'css/infusion_system_white_board.css' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <div class="header">
+        智能输液报警系统—电子看板
+    </div>
+
+    <div class="content">
+        <div class="card infusion-started" id="patient1">
+            <div class="liquid-overlay"></div>
+            <div class="card-content">
+                <b>患者信息：</b><br>
+                <span class="patient-info">陈*轩 男</span><br>
+                <span class="department-bedNo">儿一区 28床</span><br>
+                <span class="usage">接滴</span><br>
+                开始时间: <span class="start-time"></span>
+                <p class="liquid-info">
+                    估计液体余量: <span class="liquid-amount"></span>
+                </p>
+            </div>
+        </div>
+        <div class="card add-card" onclick="addCard()">+</div>
+    </div>
+
+    <div class="footer">
+        <img src="{% static 'images/logo.png' %}" alt="Logo" class="logo">
+    </div>
+
+    <script src="{% static 'js/infusion_system_white_board.js' %}"></script>
+</body>
+
+</html>

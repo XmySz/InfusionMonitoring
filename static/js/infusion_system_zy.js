@@ -357,6 +357,8 @@ function addCard() {
     setTimeout(() => {
         newCard.classList.remove('new-card');
     }, 500);
+
+    setInterval(updatePatientInfusionInformation, 10000, cardId, modalId);
 }
 
 function addHoverListeners(card) {
@@ -496,6 +498,7 @@ document.querySelector('#patient1Modal .device-scan-button').onclick = () => sca
 document.querySelector('#patient1Modal .patient-id-scan-button').onclick = () => scanPatientId('patient1Modal');
 document.querySelector('#patient1Modal .startInfusionButton').onclick = () => startInfusion('patient1Modal', 'patient1');
 addHoverListeners(document.getElementById('patient1'));
+setInterval(updatePatientInfusionInformation, 10000, "patient1", "patient1Modal");
 
 // 持久化存储
 
@@ -664,9 +667,9 @@ function loadData() {
     }
 }
 
-window.addEventListener('load', loadData);
+// window.addEventListener('load', loadData);
 
-window.addEventListener('beforeunload', saveData);
+// window.addEventListener('beforeunload', saveData);
 
 function showLockOverlay(cardId, modalId) {
     const card = document.getElementById(cardId);
@@ -731,3 +734,39 @@ function completeLockInfusion(cardId, modalId) {
 }
 
 // 025B37A41E9F 360906
+
+function updatePatientInfusionInformation(cardId, modalId)
+{
+    const partientCard = document.getElementById(cardId);
+
+    // 调用 API 更新 patient_infusion_information
+    fetch('/api/patient_infusion_info/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            patientName : partientCard.querySelector('.patient-info').textContent.split(' ')[0],
+            gender :  partientCard.querySelector('.patient-info').textContent.split(' ')[1],
+            department :  partientCard.querySelector('.department').textContent,
+            bedNum :  partientCard.querySelector('.bed-no').textContent,
+            usage :  partientCard.querySelector('.usage').textContent,
+            startTime :  partientCard.querySelector('.start-time').textContent,
+            residualLiquid :  partientCard.querySelector('.liquid-amount').textContent,
+            cardId : cardId,
+            switchStatu: document.getElementById(modalId).querySelector('.lockSwitch').value,
+            liquidHeight: partientCard.querySelector('.liquid-overlay').style.height,
+        })
+    }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('patient_infusion_information 更新成功:', data.message);
+            } else {
+                console.error('patient_infusion_information 更新失败:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('更新 patient_infusion_information 时发生错误:', error);
+        });  
+}
+
