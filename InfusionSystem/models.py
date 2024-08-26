@@ -1,4 +1,9 @@
 from django.db import models
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 
 
 class UserInfo(models.Model):
@@ -118,3 +123,41 @@ class PatientInfusionInformation(models.Model):
 
     class Meta:
         db_table = "patientInfusionInformation"
+
+
+class InfusionSystemUserManager(BaseUserManager):
+    def create_user(
+        self, employee_id, name, department, password=None, group_number=None
+    ):
+        if not employee_id:
+            raise ValueError("Users must have an employee ID")
+        user = self.model(
+            employee_id=employee_id,
+            name=name,
+            department=department,
+            group_number=group_number,
+        )
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+
+class InfusionSystemUserInfo(AbstractBaseUser):
+    employee_id = models.CharField(max_length=50, unique=True, primary_key=True)
+    name = models.CharField(max_length=100)
+    department = models.CharField(max_length=100)
+    password = models.CharField(max_length=128)  # Django will handle password hashing
+    group_number = models.CharField(max_length=50, blank=True, null=True)
+
+    objects = InfusionSystemUserManager()
+
+    last_login = None
+
+    USERNAME_FIELD = "employee_id"
+    REQUIRED_FIELDS = ["name", "department"]
+
+    def __str__(self):
+        return f"{self.employee_id} - {self.name}"
+
+    class Meta:
+        db_table = "infusionSystemUserInfo"  # 指定表名

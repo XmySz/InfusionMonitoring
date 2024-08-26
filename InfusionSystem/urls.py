@@ -17,6 +17,8 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
+from .views import SignUpView, LoginView
+
 
 from . import views
 
@@ -46,6 +48,11 @@ urlpatterns = [
     ),
     path("infusion_system_zy/", views.infusion_system_zy, name="infusion_system_zy"),
     path(
+        "login/infusion_system_zy/",
+        views.infusion_system_zy,
+        name="infusion_system_zy",
+    ),
+    path(
         "infusion_system_white_board/",
         views.infusion_system_white_board,
         name="infusion_system_white_board",
@@ -60,4 +67,6 @@ urlpatterns = [
         views.patient_infusion_info,
         name="patient_infusion_info",
     ),
+    path("signup/", SignUpView.as_view(), name="signup"),
+    path("login/", LoginView.as_view(), name="login"),
 ]

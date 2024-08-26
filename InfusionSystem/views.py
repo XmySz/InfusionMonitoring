@@ -9,7 +9,14 @@ from dateutil.relativedelta import relativedelta
 import json
 import pytz
 
+from django.views import View
+from django.contrib.auth import login, authenticate
+from .forms import InfusionSystemUserCreationForm, InfusionSystemUserLoginForm
 from .models import UserInfo, Device, SyRecord, ZyRecord, PatientInfusionInformation
+
+from django.contrib import messages
+from django.contrib.auth.hashers import check_password
+from .models import InfusionSystemUserInfo
 
 
 def calculate_age(born):
@@ -125,7 +132,7 @@ def scan_patient_mz(request, patient_id):
         record_sn_data = {}
         for p in patients:
             if SyRecord.objects.filter(
-                p_id=patient_id, record_sn=p.record_sn, f1=1
+                p_id=patient_id, record_sn=p.record_sn, f1="T"
             ).exists():
                 # 如果有f1=1的记录，跳过这个record_sn组
                 continue
@@ -170,6 +177,70 @@ def scan_patient_mz(request, patient_id):
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
 
+@require_http_methods(["GET"])
+def scan_patient_zy(request, patient_id):
+    try:
+        patients = ZyRecord.objects.filter(inpatient_no=patient_id)
+        patient = patients.first()
+
+        if not patient:
+            return JsonResponse(
+                {"success": False, "message": "未找到患者记录"}, status=404
+            )
+
+        frequ_codes = {}
+        # 创建一个字典来存储每个record_sn对应的药品列表
+        record_sn_data = {}
+        for p in patients:
+            if ZyRecord.objects.filter(
+                inpatient_no=patient_id, order_long_id=p.order_long_id, f1="True"
+            ).exists():
+                # 如果有f1=T的记录，跳过这个record_sn组
+                continue
+            else:
+                if p.order_long_id not in record_sn_data:
+                    record_sn_data[p.order_long_id] = []
+                record_sn_data[p.order_long_id].append(
+                    {
+                        "yf": p.supply_name,  # 用法
+                        "yp_name": p.order_name,  # 药品名称
+                        "specification": p.drug_specification,  # 规格
+                        "charge_amount": int(p.charge_amount),  # 数量
+                        "dosage": round(p.doseage, 2),  # 剂量
+                        "dw": p.JLDW,  # 单位
+                        "print_name": p.frequ_code,  # 次数
+                    }
+                )
+                frequ_codes[p.order_long_id] = p.frequ_code
+
+        if patient.sex == "2":
+            patient.sex = "女"
+        elif patient.sex == "1":
+            patient.sex = "男"
+        else:
+            patient.sex = "未知"
+
+        age = calculate_age(patient.birthday)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "XM": patient.XM,
+                "sex": patient.sex,
+                "age": age,
+                "KS": patient.KS,
+                "bed_no": patient.bed_no,
+                "record_sn_data": record_sn_data,
+                "frequ_codes": frequ_codes,
+            }
+        )
+    except ZyRecord.DoesNotExist:
+        return JsonResponse({"success": False}, status=404)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def update_syrecord(request):
@@ -184,7 +255,7 @@ def update_syrecord(request):
             )
 
         # 更新 SyRecord 表中符合条件的所有记录
-        updated = SyRecord.objects.filter(record_sn=record_sn, p_id=p_id).update(f1=1)
+        updated = SyRecord.objects.filter(record_sn=record_sn, p_id=p_id).update(f1="T")
 
         if updated:
             return JsonResponse(
@@ -207,8 +278,6 @@ def update_zyrecord(request):
         record_sn = data.get("record_sn")
         p_id = data.get("p_id")
 
-        print(record_sn, p_id)
-
         if not record_sn or not p_id:
             return JsonResponse(
                 {"success": False, "message": "缺少必要参数"}, status=400
@@ -217,7 +286,7 @@ def update_zyrecord(request):
         # 更新 ZyRecord 表中符合条件的所有记录
         updated = ZyRecord.objects.filter(
             order_long_id=record_sn, inpatient_no=p_id
-        ).update(f1=1)
+        ).update(f1=data.get("f1_value"))
 
         if updated:
             return JsonResponse(
@@ -258,68 +327,7 @@ def check_device_status(request, device_number):
 
 
 def infusion_system_zy(request):
-    return render(request, "infusion_system_large_screen_zy.html")
-
-
-@require_http_methods(["GET"])
-def scan_patient_zy(request, patient_id):
-    try:
-        patients = ZyRecord.objects.filter(inpatient_no=patient_id)
-        patient = patients.first()
-
-        if not patient:
-            return JsonResponse(
-                {"success": False, "message": "未找到患者记录"}, status=404
-            )
-
-        # 创建一个字典来存储每个record_sn对应的药品列表
-        record_sn_data = {}
-        for p in patients:
-            if ZyRecord.objects.filter(
-                inpatient_no=patient_id, order_long_id=p.order_long_id, f1=1
-            ).exists():
-                # 如果有f1=1的记录，跳过这个record_sn组
-                continue
-            else:
-                if p.order_long_id not in record_sn_data:
-                    record_sn_data[p.order_long_id] = []
-                record_sn_data[p.order_long_id].append(
-                    {
-                        "yf": p.supply_name,  # 用法
-                        "yp_name": p.order_name,  # 药品名称
-                        "specification": p.drug_specification,  # 规格
-                        "charge_amount": int(p.charge_amount),  # 数量
-                        "dosage": round(p.doseage, 2),  # 剂量
-                        "dw": p.JLDW,  # 单位
-                        "print_name": p.frequ_code,  # 次数
-                    }
-                )
-
-        if patient.sex == "2":
-            patient.sex = "女"
-        elif patient.sex == "1":
-            patient.sex = "男"
-        else:
-            patient.sex = "未知"
-
-        age = calculate_age(patient.birthday)
-
-        return JsonResponse(
-            {
-                "success": True,
-                "XM": patient.XM,
-                "sex": patient.sex,
-                "age": age,
-                "KS": patient.KS,
-                "bed_no": patient.bed_no,
-                "record_sn_data": record_sn_data,
-            }
-        )
-    except ZyRecord.DoesNotExist:
-        return JsonResponse({"success": False}, status=404)
-    except Exception as e:
-        print(e)
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
+    return render(request, "infusion_system_zy.html")
 
 
 def infusion_system_white_board(request):
@@ -450,3 +458,48 @@ def patient_infusion_info(request):
             )
         except Exception as e:
             return JsonResponse({"success": False, "message": str(e)}, status=400)
+
+
+class SignUpView(View):
+    template_name = "signup.html"
+
+    def get(self, request):
+        form = InfusionSystemUserCreationForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = InfusionSystemUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "注册成功！")
+            return redirect("insufion_system_zy.html")
+        return render(request, self.template_name, {"form": form})
+
+
+class LoginView(View):
+    template_name = "login.html"
+
+    def get(self, request):
+        form = InfusionSystemUserLoginForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = InfusionSystemUserLoginForm(request.POST)
+        if form.is_valid():
+            employee_id = form.cleaned_data.get("employee_id")
+            password = form.cleaned_data.get("password")
+            try:
+                user = InfusionSystemUserInfo.objects.get(employee_id=employee_id)
+                print(password, user.password)
+                # if check_password(password, user.password):
+                if password == user.password:
+                    print("密码正确")
+                    login(request, user)
+                    messages.success(request, "登录成功！")
+                    return redirect("infusion_system_zy/")
+                else:
+                    messages.error(request, "工号或密码不正确。")
+            except InfusionSystemUserInfo.DoesNotExist:
+                messages.error(request, "工号或密码不正确。")
+        return render(request, self.template_name, {"form": form})

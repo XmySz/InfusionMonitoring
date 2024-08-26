@@ -1,7 +1,12 @@
 let patientCount = 1;
-let modalData = {};   // 全局对象，用于存储每个模态窗口的响应数据里表格相关的部分
-let patientData = {};
-let deviceStatuses = {};
+let modalData = {};         // 用于存储每个模态窗口的响应数据里静止时显示的表格里的字段
+let patientData = {};   
+let deviceStatuses = {};    // 记录每个患者对应的设备的锁状态   
+if (!window.deviceMonitoringIntervals) {
+    window.deviceMonitoringIntervals = {};      // 记录监测设备状态的事件间隔函数
+}
+let remainInfusionCounts = {};  // 记录某个患者还得输液几次，如果是0次就让f1字段变为T
+
 
 function allCardsInUse() {
     const cards = document.querySelectorAll('.card:not(.add-card)');
@@ -77,7 +82,7 @@ function scanPatientId(modalId) {
                 modalElement.querySelector('.age').value = data.age;
                 modalElement.querySelector('.department').value = data.KS;
                 modalElement.querySelector('.bed-no').value = data.bed_no;
-
+                remainInfusionCounts[modalId] = data.frequ_codes;
                 // 处理药品组号
                 const medicineGroupSelect = modalElement.querySelector('.medicineGroup');
                 medicineGroupSelect.innerHTML = '<option value="">住院号扫描后请选择</option>';
@@ -115,7 +120,7 @@ function scanPatientId(modalId) {
 function updateUsage(modalId, selectedRecordSn) {
     const modalElement = document.getElementById(modalId);
     const selectedData = patientData.record_sn_data[selectedRecordSn];
-
+    
     if (selectedData && selectedData.length > 0) {
         // 更新用法字段
         modalElement.querySelector('.usage').value = selectedData[0].yf;
@@ -125,6 +130,24 @@ function updateUsage(modalId, selectedRecordSn) {
             selectedRecordSn: selectedRecordSn,
             medicineData: selectedData
         };
+    }
+    value = remainInfusionCounts[modalId][selectedRecordSn];
+
+    if(value=='ONCE' || value=='QD')
+    {
+        remainInfusionCounts[modalId][selectedRecordSn] = 1;
+    }
+    else if(value=='BID' || value=='Q12H')
+    {
+        remainInfusionCounts[modalId][selectedRecordSn] = 2;
+    }
+    else if(value=='Q8H' || value=='TID')
+    {
+        remainInfusionCounts[modalId][selectedRecordSn] = 3;
+    }
+    else if(value=='Q6H')
+    {
+        remainInfusionCounts[modalId][selectedRecordSn] = 4;
     }
 }
 
@@ -180,6 +203,9 @@ function startInfusion(modalId, cardId) {
         startTime,
         bed_no,
     });
+
+    // 向f1字段写入mac
+    onInfusion(modalId);
 }
 
 function updateMedicineTable(patientId, medicineData) {
@@ -268,7 +294,7 @@ function addCard() {
     `;
     newCard.ondblclick = () => showModal(modalId);
 
-    newCard.style.zIndex = 1000 - patientCount;
+    newCard.style.zIndex = 10000 - patientCount;
     content.insertBefore(newCard, addCard);
     addHoverListeners(newCard);
 
@@ -440,9 +466,10 @@ function simulateRealTimeUpdate(cardId, dosage, modalId, dropRate) {
     }, 1000); // 每秒更新一次
 }
 
-function completeInfusion(modalId) {
+function onInfusion(modalId) {
     const modalElement = document.getElementById(modalId);
     const patientID = modalElement.querySelector('.patientID').value;
+    const deviceMac = modalElement.querySelector('.deviceNumber').value;
     const selectedRecordSn = modalData[modalId]['selectedRecordSn'];
 
     // 调用 API 更新 ZyRecord
@@ -453,7 +480,54 @@ function completeInfusion(modalId) {
         },
         body: JSON.stringify({
             record_sn: selectedRecordSn,
-            p_id: patientID
+            p_id: patientID,
+            f1_value: deviceMac,
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('ZyRecord 更新成功:', data.message);
+            } else {
+                console.error('ZyRecord 更新失败:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('更新 ZyRecord 时发生错误:', error);
+        });
+}
+
+function completeInfusion(modalId) {
+    const modalElement = document.getElementById(modalId);
+    const patientID = modalElement.querySelector('.patientID').value;
+    const selectedRecordSn = modalData[modalId]['selectedRecordSn'];
+
+    console.log(remainInfusionCounts);
+    console.log(remainInfusionCounts[modalId]);
+
+    if(remainInfusionCounts[modalId][selectedRecordSn] !=0 )
+    {
+        remainInfusionCounts[modalId][selectedRecordSn]--;
+    }
+
+    console.log(remainInfusionCounts, remainInfusionCounts[modalId][selectedRecordSn]);
+
+    if(remainInfusionCounts[modalId][selectedRecordSn] == 0)
+    value = 'T';
+    else
+    value = remainInfusionCounts[modalId][selectedRecordSn];
+
+
+    // 调用 API 更新 ZyRecord
+    fetch('/api/update_zyrecord/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            record_sn: selectedRecordSn,
+            p_id: patientID,
+            f1_value: value,
         })
     })
         .then(response => response.json())
@@ -489,6 +563,8 @@ function startDeviceMonitoring(modalId) {
                 console.error('Error checking device status:', error);
             });
     }, 1000);
+
+    window.deviceMonitoringIntervals[modalId] = Interval;
 }
 
 // 处理第一个卡片的事件
@@ -691,7 +767,16 @@ function showLockOverlay(cardId, modalId) {
     lockOverlay.querySelector('.complete-infusion').addEventListener('click', () => {
         completeLockInfusion(cardId, modalId);
     });
-}
+
+    startDeviceMonitoring(modalId);
+    const checkInterval = setInterval(() => {
+        console.log(deviceStatuses[modalId].lockSwitch);
+        if (deviceStatuses[modalId].lockSwitch === '正在监控...') {
+            continueLockInfusion(cardId, modalId);
+            clearInterval(checkInterval); // 停止监控，因为已经继续输液了
+            stopDeviceMonitoring(modalId);
+        }
+    }, 2000);}
 
 function continueLockInfusion(cardId, modalId) {
     // 移除锁定覆盖层
@@ -733,8 +818,6 @@ function completeLockInfusion(cardId, modalId) {
 
 }
 
-// 025B37A41E9F 360906
-
 function updatePatientInfusionInformation(cardId, modalId)
 {
     const partientCard = document.getElementById(cardId);
@@ -770,3 +853,14 @@ function updatePatientInfusionInformation(cardId, modalId)
         });  
 }
 
+function stopDeviceMonitoring(modalId) {
+    if (window.deviceMonitoringIntervals && window.deviceMonitoringIntervals[modalId]) {
+        clearInterval(window.deviceMonitoringIntervals[modalId]);
+        delete window.deviceMonitoringIntervals[modalId];
+        console.log(`Stopped monitoring for device: ${modalId}`);
+    } else {
+        console.log(`No active monitoring found for device: ${modalId}`);
+    }
+}
+
+// 025B37A41E9F 360924
