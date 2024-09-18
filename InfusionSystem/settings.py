@@ -69,11 +69,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "InfusionSystem.wsgi.application"
-AUTH_USER_MODEL = "InfusionSystem.InfusionSystemUserInfo"
-LOGIN_REDIRECT_URL = "infusion_system_zy.html"  # 替换为您的主页URL名称
-
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
@@ -139,7 +134,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]

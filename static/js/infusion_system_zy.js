@@ -6,6 +6,7 @@ if (!window.deviceMonitoringIntervals) {
     window.deviceMonitoringIntervals = {};      // 记录监测设备状态的事件间隔函数
 }
 let remainInfusionCounts = {};  // 记录某个患者还得输液几次，如果是0次就让f1字段变为T
+let updatePatientInfoFunctions = {};  // 记录某个患者的患者视图更新数据库函数
 
 
 function allCardsInUse() {
@@ -149,6 +150,8 @@ function updateUsage(modalId, selectedRecordSn) {
     {
         remainInfusionCounts[modalId][selectedRecordSn] = 4;
     }
+
+    console.log(remainInfusionCounts);
 }
 
 function startInfusion(modalId, cardId) {
@@ -206,6 +209,10 @@ function startInfusion(modalId, cardId) {
 
     // 向f1字段写入mac
     onInfusion(modalId);
+
+    const updatePatientInfoFunction = setInterval(updatePatientInfusionInformation, 10000, cardId, modalId);
+    updatePatientInfoFunctions[modalId] = updatePatientInfoFunction;
+
 }
 
 function updateMedicineTable(patientId, medicineData) {
@@ -244,10 +251,10 @@ function updateCard(cardId, data) {
 }
 
 function addCard() {
-    // if (!allCardsInUse()) {
-    //     alert('请先使用所有现有的卡片后再添加新卡片。');
-    //     return;
-    // }
+     if (!allCardsInUse()) {
+         alert('请先使用所有现有的卡片后再添加新卡片。');
+         return;
+     }
 
     const content = document.querySelector('.content');
     const addCard = document.querySelector('.add-card');
@@ -383,8 +390,6 @@ function addCard() {
     setTimeout(() => {
         newCard.classList.remove('new-card');
     }, 500);
-
-    setInterval(updatePatientInfusionInformation, 10000, cardId, modalId);
 }
 
 function addHoverListeners(card) {
@@ -502,10 +507,7 @@ function completeInfusion(modalId) {
     const patientID = modalElement.querySelector('.patientID').value;
     const selectedRecordSn = modalData[modalId]['selectedRecordSn'];
 
-    console.log(remainInfusionCounts);
-    console.log(remainInfusionCounts[modalId]);
-
-    if(remainInfusionCounts[modalId][selectedRecordSn] !=0 )
+    if(remainInfusionCounts[modalId][selectedRecordSn] && remainInfusionCounts[modalId][selectedRecordSn] !=0 )
     {
         remainInfusionCounts[modalId][selectedRecordSn]--;
     }
@@ -541,6 +543,10 @@ function completeInfusion(modalId) {
         .catch(error => {
             console.error('更新 SyRecord 时发生错误:', error);
         });
+
+    clearInterval(updatePatientInfoFunctions[modalId]);
+
+    stopDeviceMonitoring(modalId);
 }
 
 function startDeviceMonitoring(modalId) {
@@ -567,24 +573,13 @@ function startDeviceMonitoring(modalId) {
     window.deviceMonitoringIntervals[modalId] = Interval;
 }
 
-// 处理第一个卡片的事件
-document.getElementById('patient1').ondblclick = () => showModal('patient1Modal');
-document.querySelector('#patient1Modal .close').onclick = () => closeModal('patient1Modal');
-document.querySelector('#patient1Modal .device-scan-button').onclick = () => scanDevice('patient1Modal');
-document.querySelector('#patient1Modal .patient-id-scan-button').onclick = () => scanPatientId('patient1Modal');
-document.querySelector('#patient1Modal .startInfusionButton').onclick = () => startInfusion('patient1Modal', 'patient1');
-addHoverListeners(document.getElementById('patient1'));
-setInterval(updatePatientInfusionInformation, 10000, "patient1", "patient1Modal");
-
-// 持久化存储
-
-// 保存数据到 localStorage
 function saveData() {
     const dataToSave = {
         modalDatas: [],
         cards: [],
         modalData: {},
         deviceStatuses: {},
+        remainInfusionCounts: {},
     };
 
     // 保存每个卡片的数据（包含静止时显示的药品表）
@@ -660,6 +655,11 @@ function saveData() {
         dataToSave.deviceStatuses[key] = deviceStatuses[key];
     }
 
+    // 保存remainInfusionCounts
+    for (let key in remainInfusionCounts){
+        dataToSave.remainInfusionCounts[key] = remainInfusionCounts[key];
+    }
+
     localStorage.setItem('infusionSystemData', JSON.stringify(dataToSave));
 }
 
@@ -670,9 +670,13 @@ function loadData() {
 
         // 解析modalData数据
         modalData = parsedData.modalData || {};
+        deviceStatuses = parsedData.deviceStatuses || {};
+        remainInfusionCounts = parsedData.remainInfusionCounts || {};
 
         // 解析card数据
         parsedData.cards.forEach(cardData => {
+            const updatePatientInfoFunction = setInterval(updatePatientInfusionInformation, 10000, cardData.id, `${cardData.id}Modal`);
+            updatePatientInfoFunctions[`${cardData.id}Modal`] = updatePatientInfoFunction;
             if (cardData.id !== 'patient1') {
                 addCard();
             }
@@ -723,6 +727,7 @@ function loadData() {
         let modalDatas = parsedData.modalDatas;
         modalDatas.forEach(
             modalData => {
+                startDeviceMonitoring(modalData.id);
                 const modal = document.getElementById(modalData.id);
                 modal.querySelector('.deviceNumber').value = modalData.deviceNumber;
                 modal.querySelector('.lockSwitch').value = modalData.lockSwitch;
@@ -742,10 +747,6 @@ function loadData() {
         )
     }
 }
-
-// window.addEventListener('load', loadData);
-
-// window.addEventListener('beforeunload', saveData);
 
 function showLockOverlay(cardId, modalId) {
     const card = document.getElementById(cardId);
@@ -768,15 +769,16 @@ function showLockOverlay(cardId, modalId) {
         completeLockInfusion(cardId, modalId);
     });
 
-    startDeviceMonitoring(modalId);
-    const checkInterval = setInterval(() => {
-        console.log(deviceStatuses[modalId].lockSwitch);
-        if (deviceStatuses[modalId].lockSwitch === '正在监控...') {
-            continueLockInfusion(cardId, modalId);
-            clearInterval(checkInterval); // 停止监控，因为已经继续输液了
-            stopDeviceMonitoring(modalId);
-        }
-    }, 2000);}
+    // startDeviceMonitoring(modalId);
+    // const checkInterval = setInterval(() => {
+    //     console.log(deviceStatuses[modalId].lockSwitch);
+    //     if (deviceStatuses[modalId].lockSwitch === '正在监控...') {
+    //         continueLockInfusion(cardId, modalId);
+    //         clearInterval(checkInterval); // 停止监控，因为已经继续输液了
+    //         stopDeviceMonitoring(modalId);
+    //     }
+    // }, 2000);
+}
 
 function continueLockInfusion(cardId, modalId) {
     // 移除锁定覆盖层
@@ -814,12 +816,10 @@ function completeLockInfusion(cardId, modalId) {
 
     // 完成输液逻辑
     completeInfusion(modalId);
-
-
 }
 
-function updatePatientInfusionInformation(cardId, modalId)
-{
+function updatePatientInfusionInformation(cardId, modalId){
+    console.log(modalId, cardId);
     const partientCard = document.getElementById(cardId);
 
     // 调用 API 更新 patient_infusion_information
@@ -863,4 +863,26 @@ function stopDeviceMonitoring(modalId) {
     }
 }
 
-// 025B37A41E9F 360924
+function resetCard(cardId){
+    card = document.getElementById(cardId);
+    if(!card){
+        console.log("要重置的cardId不存在，请检查！");
+        return ;
+    }
+    card.querySelector('.liquid-overlay').style.height = '0%';
+
+}
+
+// 处理第一个卡片的事件
+document.getElementById('patient1').ondblclick = () => showModal('patient1Modal');
+document.querySelector('#patient1Modal .close').onclick = () => closeModal('patient1Modal');
+document.querySelector('#patient1Modal .device-scan-button').onclick = () => scanDevice('patient1Modal');
+document.querySelector('#patient1Modal .patient-id-scan-button').onclick = () => scanPatientId('patient1Modal');
+document.querySelector('#patient1Modal .startInfusionButton').onclick = () => startInfusion('patient1Modal', 'patient1');
+addHoverListeners(document.getElementById('patient1'));
+
+// 持久化存储
+ window.addEventListener('load', loadData);
+ window.addEventListener('beforeunload', saveData);
+
+// 025B37A41E9F 361149
