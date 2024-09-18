@@ -17,15 +17,12 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from .views import SignUpView, LoginView
-
 
 from . import views
 
-
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", views.index, name="index"),
+    path("", views.user_login, name="login"),
     path("collect/", views.collect_user_info, name="collect_user_info"),
     path("success/", views.success, name="success"),
     path("infusion_system_mz/", views.infusion_system_mz, name="infusion_system_mz"),
@@ -58,15 +55,11 @@ urlpatterns = [
         name="infusion_system_white_board",
     ),
     path(
-        "api/update_patient_infusion_information/",
-        views.update_patient_infusion_information,
-        name="update_patient_infusion_information",
-    ),
-    path(
         "api/patient_infusion_info/",
         views.patient_infusion_info,
         name="patient_infusion_info",
     ),
-    path("signup/", SignUpView.as_view(), name="signup"),
-    path("login/", LoginView.as_view(), name="login"),
+    path("login/", views.user_login, name="login"),
+    path("signup/", views.user_signup, name="signup"),
+    path("logout/", views.user_logout, name="logout"),
 ]

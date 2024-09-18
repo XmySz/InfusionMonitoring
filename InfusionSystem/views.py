@@ -1,22 +1,17 @@
-from django.shortcuts import render, redirect
-from django import forms
-from django.utils import timezone
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 import json
+from datetime import datetime
+
 import pytz
+from dateutil.relativedelta import relativedelta
+from django import forms
+from django.contrib.auth import login, authenticate, logout
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
-from django.views import View
-from django.contrib.auth import login, authenticate
-from .forms import InfusionSystemUserCreationForm, InfusionSystemUserLoginForm
+from .forms import SignupForm, LoginForm
 from .models import UserInfo, Device, SyRecord, ZyRecord, PatientInfusionInformation
-
-from django.contrib import messages
-from django.contrib.auth.hashers import check_password
-from .models import InfusionSystemUserInfo
 
 
 def calculate_age(born):
@@ -193,7 +188,7 @@ def scan_patient_zy(request, patient_id):
         record_sn_data = {}
         for p in patients:
             if ZyRecord.objects.filter(
-                inpatient_no=patient_id, order_long_id=p.order_long_id, f1="True"
+                inpatient_no=patient_id, order_long_id=p.order_long_id, f1="T"
             ).exists():
                 # 如果有f1=T的记录，跳过这个record_sn组
                 continue
@@ -335,71 +330,6 @@ def infusion_system_white_board(request):
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
-def update_patient_infusion_information(request):
-    try:
-        data = json.loads(request.body)
-        name = data.get("patientName")
-        gender = data.get("gender")
-        department = data.get("department")
-        bedNum = data.get("bedNum")
-        usage = data.get("usage")
-        startTime = data.get("startTime")
-        residualLiquid = data.get("residualLiquid")
-        cardId = data.get("cardId")
-        liquidHeight = data.get("liquidHeight")
-        switchStatu = data.get("switchStatu")
-
-        if not name or not startTime:
-            return JsonResponse(
-                {"success": False, "message": "缺少必要参数"}, status=400
-            )
-
-        updated = PatientInfusionInformation.objects.filter(cardId=cardId).update(
-            name=name,
-            gender=gender,
-            department=department,
-            bedNum=bedNum,
-            usage=usage,
-            startTime=startTime,
-            residualLiquid=residualLiquid,
-            cardId=cardId,
-            liquidHeight=liquidHeight,
-            switchStatu=switchStatu,
-        )
-
-        if updated:
-            return JsonResponse(
-                {"success": True, "message": f"成功更新 {updated} 条记录"}
-            )
-        else:
-            inserted = PatientInfusionInformation.objects.create(
-                name=name,
-                gender=gender,
-                department=department,
-                bedNum=bedNum,
-                usage=usage,
-                startTime=startTime,
-                residualLiquid=residualLiquid,
-                cardId=cardId,
-                liquidHeight=liquidHeight,
-                switchStatu=switchStatu,
-            )
-
-            if inserted:
-                return JsonResponse(
-                    {"success": True, "message": f"成功插入 {updated} 条记录"}
-                )
-            else:
-                return JsonResponse(
-                    {"success": False, "message": "未找到匹配的记录"}, status=404
-                )
-
-    except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
-
-
-@csrf_exempt
 @require_http_methods(["POST", "GET"])
 def patient_infusion_info(request):
     if request.method == "GET":
@@ -435,7 +365,7 @@ def patient_infusion_info(request):
             patient, created = PatientInfusionInformation.objects.update_or_create(
                 cardId=data.get("cardId"),
                 defaults={
-                    "name": data.get("name"),
+                    "name": data.get("patientName"),
                     "gender": data.get("gender"),
                     "department": data.get("department"),
                     "bedNum": data.get("bedNum"),
@@ -460,46 +390,32 @@ def patient_infusion_info(request):
             return JsonResponse({"success": False, "message": str(e)}, status=400)
 
 
-class SignUpView(View):
-    template_name = "signup.html"
-
-    def get(self, request):
-        form = InfusionSystemUserCreationForm()
-        return render(request, self.template_name, {"form": form})
-
-    def post(self, request):
-        form = InfusionSystemUserCreationForm(request.POST)
+def user_signup(request):
+    if request.method == "POST":
+        form = SignupForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, "注册成功！")
-            return redirect("insufion_system_zy.html")
-        return render(request, self.template_name, {"form": form})
+            form.save()
+            return redirect("login")
+    else:
+        form = SignupForm()
+    return render(request, "signup.html", {"form": form})
 
 
-class LoginView(View):
-    template_name = "login.html"
-
-    def get(self, request):
-        form = InfusionSystemUserLoginForm()
-        return render(request, self.template_name, {"form": form})
-
-    def post(self, request):
-        form = InfusionSystemUserLoginForm(request.POST)
+def user_login(request):
+    if request.method == "POST":
+        form = LoginForm(request.POST)
         if form.is_valid():
-            employee_id = form.cleaned_data.get("employee_id")
-            password = form.cleaned_data.get("password")
-            try:
-                user = InfusionSystemUserInfo.objects.get(employee_id=employee_id)
-                print(password, user.password)
-                # if check_password(password, user.password):
-                if password == user.password:
-                    print("密码正确")
-                    login(request, user)
-                    messages.success(request, "登录成功！")
-                    return redirect("infusion_system_zy/")
-                else:
-                    messages.error(request, "工号或密码不正确。")
-            except InfusionSystemUserInfo.DoesNotExist:
-                messages.error(request, "工号或密码不正确。")
-        return render(request, self.template_name, {"form": form})
+            username = form.cleaned_data["username"]
+            password = form.cleaned_data["password"]
+            user = authenticate(request, username=username, password=password)
+            if user:
+                login(request, user)
+                return redirect("infusion_system_zy")
+    else:
+        form = LoginForm()
+    return render(request, "login.html", {"form": form})
+
+
+def user_logout(request):
+    logout(request)
+    return redirect("login")

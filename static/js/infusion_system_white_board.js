@@ -138,11 +138,7 @@ function completeLockInfusion(cardId, modalId) {
 
     // 完成输液逻辑
     completeInfusion(modalId);
-
-
 }
-
-// 025B37A41E9F 360906
 
 function fetchPatientData() {
     return fetch('/api/patient_infusion_info/')
